@@ -48,17 +48,16 @@ export const updateStudent = async (req, res) => {
 
     // Validate subjects is an array if provided
     if (subjects && !Array.isArray(subjects)) {
-      return res.status(400).json({ message: 'Subjects must be an array of IDs' });
+      return res.status(400).json({ message: 'Subjects must be an array' });
     }
 
     const student = await Student.findById(req.params.id);
-
     if (!student) {
       return res.status(404).json({ message: 'Student not found' });
     }
 
-    const oldSubjects = student.subjects.map(id => id.toString());  // Convert ObjectIds to strings
-    const newSubjects = subjects.map(id => id.toString());
+    const oldSubjects = student.subjects.map(id => id.toString()); // Convert ObjectIds to strings
+    const newSubjects = subjects.map(s => (typeof s === 'string' ? s : s._id.toString()));
 
     // Find removed and added subjects
     const removedSubjects = oldSubjects.filter(id => !newSubjects.includes(id));
@@ -70,7 +69,7 @@ export const updateStudent = async (req, res) => {
     student.course = course;
     student.section = section;
     student.yearLevel = yearLevel;
-    student.subjects = subjects;
+    student.subjects = newSubjects;
 
     await student.save();
 
@@ -80,15 +79,16 @@ export const updateStudent = async (req, res) => {
     }
 
     if (addedSubjects.length > 0) {
-      await createSubjectGradesForStudent(student._id, addedSubjects, section, yearLevel);
+      await createSubjectGrade(student._id, addedSubjects, section, yearLevel);
     }
 
     res.status(200).json({ message: 'Student updated', student });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: 'Error updating student', error: err });
+    res.status(500).json({ message: 'Error updating student', error: err.message });
   }
 };
+
 
 // Get all students with pagination and optional search query
 export const getAllStudents = async (req, res) => {

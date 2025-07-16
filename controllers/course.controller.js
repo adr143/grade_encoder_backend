@@ -79,3 +79,41 @@ export const deleteCourse = async (req, res) => {
       res.status(500).json({ message: 'Error deleting course', error: error.message });
     }
   };
+
+export const updateCourse = async (req, res) => {
+  try {
+    const courseId = req.params.id;
+    const { name } = req.body;
+
+    // Validate ID
+    if (!mongoose.Types.ObjectId.isValid(courseId)) {
+      return res.status(400).json({ message: 'Invalid course ID' });
+    }
+
+    // Validate input
+    if (!name || name.trim() === '') {
+      return res.status(400).json({ message: 'Course name is required' });
+    }
+
+    // Check if the course exists
+    const course = await Course.findById(courseId);
+    if (!course) {
+      return res.status(404).json({ message: 'Course not found' });
+    }
+
+    // Check for name conflict (ignore current course)
+    const existing = await Course.findOne({ name: name.trim(), _id: { $ne: courseId } });
+    if (existing) {
+      return res.status(409).json({ message: 'Another course with the same name already exists' });
+    }
+
+    // Update course name
+    course.name = name.trim();
+    await course.save();
+
+    res.status(200).json({ message: 'Course updated successfully', course });
+  } catch (error) {
+    console.error('Update course error:', error);
+    res.status(500).json({ message: 'Error updating course', error: error.message });
+  }
+};

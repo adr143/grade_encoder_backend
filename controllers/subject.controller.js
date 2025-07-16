@@ -56,3 +56,41 @@ export const deleteSubject = async (req, res) => {
     res.status(500).json({ message: 'Failed to delete subject', error: err.message });
   }
 };
+
+export const updateSubject = async (req, res) => {
+  try {
+    const subjectId = req.params.id;
+    const { name } = req.body;
+
+    // Validate ID
+    if (!mongoose.Types.ObjectId.isValid(subjectId)) {
+      return res.status(400).json({ message: 'Invalid subject ID' });
+    }
+
+    // Validate input
+    if (!name || name.trim() === '') {
+      return res.status(400).json({ message: 'Subject name is required' });
+    }
+
+    // Check if subject exists
+    const subject = await Subject.findById(subjectId);
+    if (!subject) {
+      return res.status(404).json({ message: 'Subject not found' });
+    }
+
+    // Check for name conflict
+    const existing = await Subject.findOne({ name: name.trim(), _id: { $ne: subjectId } });
+    if (existing) {
+      return res.status(409).json({ message: 'Another subject with the same name already exists' });
+    }
+
+    // Perform update
+    subject.name = name.trim();
+    await subject.save();
+
+    res.status(200).json({ message: 'Subject updated successfully', subject });
+  } catch (err) {
+    console.error('Update subject error:', err);
+    res.status(500).json({ message: 'Failed to update subject', error: err.message });
+  }
+};
